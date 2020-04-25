@@ -25,12 +25,13 @@ public class TopKWords {
     this.priorityQueue = new PriorityQueue(k);
     this.wordFrequencyMap = new HashMap<>();
     this.file = file;
+    System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
     executors = Executors.newFixedThreadPool(32);
     List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = getSplits(file, toBytes(2), toBytes(1));
+    List<FileSplit> splits = getSplits(file, toBytes(300), toBytes(16));
     System.out.println(splits);
     for(FileSplit split : splits) {
-      ProcessFile task = new ProcessFile(split, wordFrequencyMap);
+      Callable task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
     }
     long start = System.currentTimeMillis();
@@ -75,7 +76,7 @@ public class TopKWords {
   }
 
   private void addToTopKPriorityQueue(WordFrequency wordFrequency) {
-    if (priorityQueue.size() <= k) {
+    if (priorityQueue.size() < k) {
       priorityQueue.add(wordFrequency);
     } else if (priorityQueue.peek().getFrequency() < wordFrequency.getFrequency()) {
       priorityQueue.poll();

@@ -5,11 +5,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class ProcessFile implements Callable<Long> {
   private FileSplit split;
-  private volatile Map<String, Long> wordFrequencyMap;
+  private Map<String, Long> wordFrequencyMap;
+  private Map<String, Long> localMap;
   private boolean skipLine;
   private long start;
   private long end;
@@ -17,18 +19,20 @@ public class ProcessFile implements Callable<Long> {
 
   public ProcessFile(FileSplit split, Map<String, Long> wordFrequencyMap) {
     this.split = split;
+    this.localMap = new ConcurrentHashMap<>();
     this.wordFrequencyMap = wordFrequencyMap;
     this.start = split.start;
     this.skipLine = (start != 0);
     this.end = split.start + split.length;
   }
 
-  public synchronized long processFile() {
+  public long processFile() {
     String line;
+    long count = 0;
     try(RandomAccessFile randomAccess = new RandomAccessFile(split.file, "r")) {
       if(skipLine) {
         randomAccess.seek(start--);
-        System.out.println("Skipping first line");
+        // System.out.println("Skipping first line");
         start += randomAccess.readLine().length();
       }
       pos = start;
@@ -38,19 +42,21 @@ public class ProcessFile implements Callable<Long> {
           addToWordFrequencyMap(word);
         }
         pos += line.length();
+        count += line.length();
       }
     } catch(FileNotFoundException fne) {
       System.err.println(fne.getMessage());
     } catch(IOException e) {
       System.err.println(e.getMessage());
     }
-    System.out.println(pos);
-    return pos;
+    return count;
   }
 
-  public synchronized void addToWordFrequencyMap(String word) {
-    long count = wordFrequencyMap.getOrDefault(word, 0L) + 1;
-    wordFrequencyMap.put(word, count);
+  private void addToWordFrequencyMap(String word) {
+    synchronized (wordFrequencyMap) {
+      long count = wordFrequencyMap.getOrDefault(word, 0L) + 1;
+      wordFrequencyMap.put(word, count);
+    }
   }
 
   @Override

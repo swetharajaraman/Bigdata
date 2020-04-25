@@ -1,6 +1,8 @@
 package com.swetha;
 
-public class WordFrequency implements Comparable<WordFrequency> {
+import java.io.Serializable;
+
+public class WordFrequency implements Comparable<WordFrequency>, Serializable {
   private String word;
   private long frequency;
 
