@@ -3,30 +3,27 @@ package com.swetha;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 
-
-public class ProcessFile implements Callable<Long> {
+public class ProcessFile implements Callable<Map<String, Long>> {
   private FileSplit split;
-  private Map<String, Long> wordFrequencyMap;
-  private Map<String, Long> localMap;
+  private Map<String, Long> frequencyMap;
   private boolean skipLine;
   private long start;
   private long end;
   private long pos;
 
-  public ProcessFile(FileSplit split, Map<String, Long> wordFrequencyMap) {
+  public ProcessFile(FileSplit split) {
     this.split = split;
-    this.localMap = new ConcurrentHashMap<>();
-    this.wordFrequencyMap = wordFrequencyMap;
+    this.frequencyMap = new HashMap<>(1000000);
     this.start = split.start;
     this.skipLine = (start != 0);
     this.end = split.start + split.length;
   }
 
-  public long processFile() {
+  private long processFile() {
     String line;
     long count = 0;
     try(RandomAccessFile randomAccess = new RandomAccessFile(split.file, "r")) {
@@ -49,19 +46,19 @@ public class ProcessFile implements Callable<Long> {
     } catch(IOException e) {
       System.err.println(e.getMessage());
     }
+    System.out.println(count);
     return count;
   }
 
   private void addToWordFrequencyMap(String word) {
-    synchronized (wordFrequencyMap) {
-      long count = wordFrequencyMap.getOrDefault(word, 0L) + 1;
-      wordFrequencyMap.put(word, count);
-    }
+      long count = frequencyMap.getOrDefault(word, 0L) + 1;
+      frequencyMap.put(word, count);
   }
 
   @Override
-  public Long call() {
+  public Map<String, Long> call() {
     // System.out.println("Processing file");
-    return processFile();
+    processFile();
+    return frequencyMap;
   }
 }

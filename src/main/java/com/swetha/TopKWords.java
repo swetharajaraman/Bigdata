@@ -1,49 +1,24 @@
 package com.swetha;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public class TopKWords {
   private int k;
   private PriorityQueue<WordFrequency> priorityQueue;
   private String file;
   private ExecutorService executors;
-  private Map<String, Long> wordFrequencyMap;
 
-  public TopKWords(String file, int k) throws InterruptedException, ExecutionException {
+  public TopKWords(String file, int k) {
     this.k = k;
     this.priorityQueue = new PriorityQueue(k);
-    this.wordFrequencyMap = new HashMap<>();
     this.file = file;
     System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
     executors = Executors.newFixedThreadPool(32);
-    List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = getSplits(file, toBytes(300), toBytes(16));
-    System.out.println(splits);
-    for(FileSplit split : splits) {
-      Callable task = new ProcessFile(split, wordFrequencyMap);
-      callables.add(task);
-    }
-    long start = System.currentTimeMillis();
-    System.out.println("Total number of tasks " + callables.size());
-    List<Future<Long>> futures = executors.invokeAll(callables);
-    long totalBytes = 0;
-    for(Future<Long> f : futures) {
-      totalBytes += f.get();
-    }
-    System.out.println("Total bytes read " + totalBytes);
-    System.out.println("Total time taken " + (System.currentTimeMillis() - start) / 1000 + " secs");
-    executors.shutdown();
   }
 
   private List<FileSplit> getSplits(String file, long fileLength, long splitSize) {
@@ -58,17 +33,45 @@ public class TopKWords {
     return splits;
   }
 
-  public List<WordFrequency> topK() {
-    processWordFrequencies();
-    System.out.println("WordFrequencyMap keys size " + wordFrequencyMap.size());
+  public List<WordFrequency> topK() throws ExecutionException, InterruptedException {
+    long start = System.currentTimeMillis();
+    List<Callable<Map<String, Long>>> callables = new ArrayList<>();
+    List<FileSplit> splits = getSplits(file, new File(file).length(), toBytes(16));
+    System.out.println(splits);
+    for(FileSplit split : splits) {
+      Callable task = new ProcessFile(split);
+      callables.add(task);
+    }
+    System.out.println("Total number of tasks " + callables.size());
+    List<Future<Map<String, Long>>> futures = executors.invokeAll(callables);
+    awaitTerminationAfterShutdown(executors);
+
+    // Merge hashmaps into one single hashmap
+    Map<String, Long> mergeMap = new HashMap<>();
+    long totalBytes = 0;
+    for(Future<Map<String, Long>> future : futures) {
+      for(Map.Entry<String, Long> entry : future.get().entrySet()) {
+        if(mergeMap.containsKey(entry.getKey())) {
+          long value = mergeMap.get(entry.getKey()) + entry.getValue();
+          mergeMap.put(entry.getKey(), value);
+        } else {
+          mergeMap.put(entry.getKey(), entry.getValue());
+        }
+      }
+    }
+    System.out.println("Total bytes read " + totalBytes);
+    System.out.println("Total time taken " + (System.currentTimeMillis() - start) / 1000 + " secs");
+    processWordFrequencies(mergeMap);
+    System.out.println("WordFrequencyMap keys size " + mergeMap.size());
     List<WordFrequency> result = new ArrayList<>();
     while (!priorityQueue.isEmpty()) {
       result.add(priorityQueue.poll());
     }
+
     return result;
   }
 
-  public void processWordFrequencies() {
+  private void processWordFrequencies(Map<String, Long> wordFrequencyMap) {
     for (Map.Entry<String, Long> entry : wordFrequencyMap.entrySet()) {
       WordFrequency wordFrequency = new WordFrequency(entry.getKey(), entry.getValue());
       addToTopKPriorityQueue(wordFrequency);
@@ -81,6 +84,18 @@ public class TopKWords {
     } else if (priorityQueue.peek().getFrequency() < wordFrequency.getFrequency()) {
       priorityQueue.poll();
       priorityQueue.add(wordFrequency);
+    }
+  }
+
+  private void awaitTerminationAfterShutdown(ExecutorService threadPool) {
+    threadPool.shutdown();
+    try {
+      if (!threadPool.awaitTermination(60, TimeUnit.SECONDS)) {
+        threadPool.shutdownNow();
+      }
+    } catch (InterruptedException ex) {
+      threadPool.shutdownNow();
+      Thread.currentThread().interrupt();
     }
   }
 
