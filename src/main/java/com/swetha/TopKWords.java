@@ -25,7 +25,7 @@ public class TopKWords {
   public List<WordFrequency> topK() throws ExecutionException, InterruptedException {
     long start = System.currentTimeMillis();
     List<Callable<Map<String, Long>>> callables = new ArrayList<>();
-    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), toBytes(4));
+    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 256);
     System.out.println(splits);
     for(FileSplit split : splits) {
       Callable task = new ProcessFile(split);
@@ -39,12 +39,15 @@ public class TopKWords {
     Map<String, Long> mergeMap = new HashMap<>();
     long totalBytes = 0;
     for(Future<Map<String, Long>> future : futures) {
-      for(Map.Entry<String, Long> entry : future.get().entrySet()) {
-        if(mergeMap.containsKey(entry.getKey())) {
-          long value = mergeMap.get(entry.getKey()) + entry.getValue();
-          mergeMap.put(entry.getKey(), value);
-        } else {
-          mergeMap.put(entry.getKey(), entry.getValue());
+      if (future.get() != null) {
+        Map<String, Long> map = future.get();
+        for (Map.Entry<String, Long> entry : map.entrySet()) {
+          if (mergeMap.containsKey(entry.getKey())) {
+            long value = mergeMap.get(entry.getKey()) + entry.getValue();
+            mergeMap.put(entry.getKey(), value);
+          } else {
+            mergeMap.put(entry.getKey(), entry.getValue());
+          }
         }
       }
     }

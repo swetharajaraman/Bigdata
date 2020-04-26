@@ -5,6 +5,7 @@ import java.util.List;
 
 
 public class FileSplit {
+
   long start;
   long length;
   String file;
@@ -21,13 +22,18 @@ public class FileSplit {
   }
 
   public static List<FileSplit> getSplits(String file, long fileLength, long splitSize) {
-    long start = 0;
+    final double SPLIT_SLOP = 1.1;
     List<FileSplit> splits = new ArrayList<>();
-    while(fileLength > 0) {
-      FileSplit split = new FileSplit(start, splitSize, file);
+    long bytesRemaining = fileLength;
+    while(((double) bytesRemaining)/splitSize > SPLIT_SLOP) {
+      FileSplit split = new FileSplit(fileLength - bytesRemaining, splitSize, file);
       splits.add(split);
-      start += splitSize + 1;
-      fileLength -= splitSize;
+      bytesRemaining -= splitSize;
+    }
+
+    if(bytesRemaining != 0) {
+      FileSplit split = new FileSplit(fileLength - bytesRemaining, splitSize, file);
+      splits.add(split);
     }
     return splits;
   }

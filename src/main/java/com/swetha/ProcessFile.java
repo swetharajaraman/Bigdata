@@ -36,7 +36,8 @@ public class ProcessFile implements Callable<Map<String, Long>> {
       if(skipLine) {
         randomAccess.seek(start--);
         // System.out.println("Skipping first line");
-        start += randomAccess.readLine().length();
+        line = randomAccess.readLine();
+        start += line != null ? line.length() : 0;
       }
       pos = start;
       reader = new BufferedReader(new FileReader(randomAccess.getFD()));
@@ -49,6 +50,7 @@ public class ProcessFile implements Callable<Map<String, Long>> {
         count += line.length();
         lines++;
       }
+      System.out.println(randomAccess.getFilePointer());
     } catch(FileNotFoundException fne) {
       System.err.println(fne.getMessage());
     } catch(IOException e) {
