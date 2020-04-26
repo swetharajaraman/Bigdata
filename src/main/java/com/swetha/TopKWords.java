@@ -2,7 +2,6 @@ package com.swetha;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -16,22 +15,19 @@ import java.util.concurrent.Future;
 public class TopKWords {
   private int k;
   private PriorityQueue<WordFrequency> priorityQueue;
-  private String file;
-  private ExecutorService executors;
   private Map<String, Long> wordFrequencyMap;
 
   public TopKWords(String file, int k) throws InterruptedException, ExecutionException {
     this.k = k;
     this.priorityQueue = new PriorityQueue(k);
-    this.wordFrequencyMap = new HashMap<>();
-    this.file = file;
+    this.wordFrequencyMap = new ConcurrentHashMap<>();
     System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
-    executors = Executors.newFixedThreadPool(32);
+    ExecutorService executors = Executors.newFixedThreadPool(20);
     List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = getSplits(file, toBytes(300), toBytes(16));
+    List<FileSplit> splits = getSplits(file, new File(file).length(), toBytes(64));
     System.out.println(splits);
     for(FileSplit split : splits) {
-      Callable task = new ProcessFile(split, wordFrequencyMap);
+      Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
     }
     long start = System.currentTimeMillis();
@@ -78,7 +74,7 @@ public class TopKWords {
   private void addToTopKPriorityQueue(WordFrequency wordFrequency) {
     if (priorityQueue.size() < k) {
       priorityQueue.add(wordFrequency);
-    } else if (priorityQueue.peek().getFrequency() < wordFrequency.getFrequency()) {
+    } else if (priorityQueue.peek() != null && priorityQueue.peek().getFrequency() < wordFrequency.getFrequency()) {
       priorityQueue.poll();
       priorityQueue.add(wordFrequency);
     }
