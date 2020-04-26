@@ -1,6 +1,8 @@
 package com.swetha;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
@@ -26,27 +28,45 @@ public class ProcessFile implements Callable<Map<String, Long>> {
   private long processFile() {
     String line;
     long count = 0;
-    try(RandomAccessFile randomAccess = new RandomAccessFile(split.file, "r")) {
+    long lines = 0;
+    RandomAccessFile randomAccess = null;
+    BufferedReader reader = null;
+    try {
+      randomAccess = new RandomAccessFile(split.file, "r");
       if(skipLine) {
         randomAccess.seek(start--);
         // System.out.println("Skipping first line");
         start += randomAccess.readLine().length();
       }
       pos = start;
-      while ((line = randomAccess.readLine()) != null && pos <= end) {
+      reader = new BufferedReader(new FileReader(randomAccess.getFD()));
+      while ((line = reader.readLine()) != null && pos <= end) {
         String[] words = line.split("\\s+");
         for (String word : words) {
           addToWordFrequencyMap(word);
         }
         pos += line.length();
         count += line.length();
+        lines++;
       }
     } catch(FileNotFoundException fne) {
       System.err.println(fne.getMessage());
     } catch(IOException e) {
       System.err.println(e.getMessage());
+    } finally {
+      try {
+        if (randomAccess != null) {
+          randomAccess.close();
+        }
+
+        if(reader != null) {
+          reader.close();
+        }
+      } catch(IOException e) {
+        System.err.println(e.getMessage());
+      }
     }
-    System.out.println(count);
+    System.out.println(lines);
     return count;
   }
 

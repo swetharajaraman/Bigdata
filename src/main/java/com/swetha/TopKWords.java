@@ -1,5 +1,6 @@
 package com.swetha;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,25 +19,13 @@ public class TopKWords {
     this.priorityQueue = new PriorityQueue(k);
     this.file = file;
     System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
-    executors = Executors.newFixedThreadPool(32);
-  }
-
-  private List<FileSplit> getSplits(String file, long fileLength, long splitSize) {
-    long start = 0;
-    List<FileSplit> splits = new ArrayList<>();
-    while(fileLength > 0) {
-      FileSplit split = new FileSplit(start, splitSize, file);
-      splits.add(split);
-      start += splitSize + 1;
-      fileLength -= splitSize;
-    }
-    return splits;
+    executors = Executors.newFixedThreadPool(64);
   }
 
   public List<WordFrequency> topK() throws ExecutionException, InterruptedException {
     long start = System.currentTimeMillis();
     List<Callable<Map<String, Long>>> callables = new ArrayList<>();
-    List<FileSplit> splits = getSplits(file, new File(file).length(), toBytes(16));
+    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), toBytes(4));
     System.out.println(splits);
     for(FileSplit split : splits) {
       Callable task = new ProcessFile(split);
