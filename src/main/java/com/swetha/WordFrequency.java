@@ -1,8 +1,10 @@
 package com.swetha;
 
-import java.io.Serializable;
+/**
+ * WordFrequency is used to maintain word and its frequency and also compare 2 words by its frequencies.
+ */
 
-public class WordFrequency implements Comparable<WordFrequency>, Serializable {
+public class WordFrequency implements Comparable<WordFrequency> {
   private String word;
   private long frequency;
 

@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+/**
+ * FileSplit has the split information of the file, its start offset and the split size
+ */
 public class FileSplit {
   int id;
   long start;
@@ -22,6 +25,7 @@ public class FileSplit {
     return "File Split with file " + file + " starting offset " + start + " end " + (start + length);
   }
 
+  // Compute splits based on the split size
   public static List<FileSplit> getSplits(String file, long fileLength, long splitSize) {
     int i = 0;
     final double SPLIT_SLOP = 1.1;

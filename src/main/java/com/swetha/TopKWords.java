@@ -12,6 +12,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+/**
+ * Main class to compute TopK words from a text file.
+ */
 public class TopKWords {
   private int k;
   private PriorityQueue<WordFrequency> priorityQueue;
@@ -21,11 +24,9 @@ public class TopKWords {
     this.k = k;
     this.priorityQueue = new PriorityQueue(k);
     this.wordFrequencyMap = new ConcurrentHashMap<>();
-    // System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
     ExecutorService executors = Executors.newFixedThreadPool(64);
     List<Callable<Long>> callables = new ArrayList<>();
     List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 1024);
-    // System.out.println(splits);
     for(FileSplit split : splits) {
       Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
@@ -37,17 +38,16 @@ public class TopKWords {
     for(Future<Long> f : futures) {
       totalBytes += f.get();
     }
-    System.out.println("Total bytes read " + totalBytes);
     System.out.println("Total time taken " + (System.currentTimeMillis() - start) + " ms");
     executors.shutdown();
   }
 
-  public List<WordFrequency> topK() {
+  public List<String> topK() {
     processWordFrequencies();
     System.out.println("WordFrequencyMap keys size " + wordFrequencyMap.size());
-    List<WordFrequency> result = new ArrayList<>();
+    List<String> result = new ArrayList<>();
     while (!priorityQueue.isEmpty()) {
-      result.add(priorityQueue.poll());
+      result.add(priorityQueue.poll().getWord());
     }
     return result;
   }
