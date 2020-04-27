@@ -10,6 +10,7 @@ import java.io.RandomAccessFile;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 
 public class ProcessFile implements Callable<Long> {
@@ -21,7 +22,7 @@ public class ProcessFile implements Callable<Long> {
 
   public ProcessFile(FileSplit split, Map<String, Long> wordFrequencyMap) {
     this.split = split;
-    this.wordFrequencyMap = wordFrequencyMap;
+    this.wordFrequencyMap = new TreeMap<>();
     this.start = split.start;
     this.skipLine = (start != 0);
     this.end = split.start + split.length;
@@ -49,14 +50,15 @@ public class ProcessFile implements Callable<Long> {
         String[] words = line.split("\\s+");
         for (String word : words) {
           if(word != null && !word.isEmpty()) {
-            addToWordFrequencyMap(word);
+            //
+            addToWordFrequencyMap(word.replaceAll("[^\\w\\s]", ""));
           }
         }
         pos += line.length();
         count += line.getBytes().length;
         numLines++;
       }
-
+      writeToFile(wordFrequencyMap);
       // System.out.println("Num lines " + numLines);
       // System.out.println("File Split start = " + split.start + " startPosition = " + startPosition + " end = " + end + " last file position " + randomAccess.getFilePointer());
     } catch(IOException e) {
@@ -86,7 +88,7 @@ public class ProcessFile implements Callable<Long> {
     File writeFile = new File("FileSplit-" + this.split.id);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(writeFile))) {
       for(Map.Entry<String, Long> entry : map.entrySet()) {
-        writer.write(entry.getKey() + "-" + entry.getValue());
+        writer.write(entry.getKey() + "\0" + entry.getValue());
         writer.write("\n");
       }
     } catch (IOException e) {

@@ -3,8 +3,13 @@ package com.swetha;
 import java.io.Serializable;
 
 public class WordFrequency implements Comparable<WordFrequency>, Serializable {
-  private String word;
-  private long frequency;
+  String word;
+  long frequency;
+
+  public WordFrequency() {
+    word = null;
+    frequency = 0L;
+  }
 
   public WordFrequency(String word, long frequency) {
     this.word = word;
