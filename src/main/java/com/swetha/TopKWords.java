@@ -78,7 +78,12 @@ public class TopKWords {
   }
 
   public static void main(String[] args) throws ExecutionException, InterruptedException {
-    TopKWords topk = new TopKWords("C:\\dataset-400MB.txt", 10);
+    if(args.length <= 0) {
+      System.err.println("java -cp .: com.swetha.TopKWords <input-data-file>");
+      return;
+    }
+
+    TopKWords topk = new TopKWords(args[0], 10);
     System.out.println(topk.topK());
   }
 
