@@ -16,14 +16,16 @@ public class TopKWords {
   private int k;
   private PriorityQueue<WordFrequency> priorityQueue;
   private Map<String, Long> wordFrequencyMap;
+  private int numSplits;
 
-  public TopKWords(String file, int k) throws InterruptedException, ExecutionException {
+  public TopKWords(String file, int k, int numSplits) throws InterruptedException, ExecutionException {
     this.k = k;
     this.priorityQueue = new PriorityQueue(k);
     this.wordFrequencyMap = new ConcurrentHashMap<>();
+    this.numSplits = numSplits;
     ExecutorService executors = Executors.newFixedThreadPool(64);
     List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 32);
+    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / numSplits);
     for(FileSplit split : splits) {
       Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
@@ -79,12 +81,23 @@ public class TopKWords {
 
   public static void main(String[] args) throws ExecutionException, InterruptedException {
     if(args.length <= 0) {
-      System.err.println("java -cp .: com.swetha.TopKWords <input-data-file>");
+      System.err.println("java -cp .:target/topk-1.0-SNAPSHOT.jar com.swetha.TopKWords <input-data-file> <k (default 10)> <num-splits (default 32>");
       return;
     }
 
-    TopKWords topk = new TopKWords(args[0], 10);
-    System.out.println(topk.topK());
+    int k = 10;
+    int numSplits = 32;
+
+    if(args.length > 1) {
+      k = Integer.parseInt(args[1]);
+    }
+
+    if(args.length > 2) {
+      numSplits = Integer.parseInt(args[2]);
+    }
+
+    TopKWords topk = new TopKWords(args[0], k, numSplits);
+    System.out.println("Top " + k + " repeated words are : " + topk.topK());
   }
 
   private long toBytes(long sizeInMB) {

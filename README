@@ -1,0 +1,12 @@
+### Top k frequent words
+
+This is a multi-threaded parallel scan program to compute top 'k' frequent (or repeated) words in a text dataset.
+
+## How to build the code
+Run `mvn clean package` to build the code and the topk-1.0-SNAPSHOT.jar will be built under target/
+
+## How to run the code
+java -cp .:target/topk-1.0-SNAPSHOT.jar com.swetha.TopKWords <input-data-file> <k (default 10)> <num-splits (default 32>
+
+The above command will output the top k words in the given dataset by splitting the data into num-splits and scans the data in parallel.
+
