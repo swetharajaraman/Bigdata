@@ -33,7 +33,7 @@ public class TopKWords {
     // System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
     ExecutorService executors = Executors.newFixedThreadPool(64);
     List<Callable<Long>> callables = new ArrayList<>();
-    splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 4);
+    splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 1024);
     // System.out.println(splits);
     for(FileSplit split : splits) {
       Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
