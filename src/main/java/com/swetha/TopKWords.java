@@ -1,10 +1,7 @@
 package com.swetha;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -26,7 +23,7 @@ public class TopKWords {
     this.wordFrequencyMap = new ConcurrentHashMap<>();
     ExecutorService executors = Executors.newFixedThreadPool(64);
     List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 1024);
+    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 32);
     for(FileSplit split : splits) {
       Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
@@ -42,16 +39,23 @@ public class TopKWords {
     executors.shutdown();
   }
 
+  /**
+   * Return list of topK frequent words
+   * @return
+   */
   public List<String> topK() {
     processWordFrequencies();
-    System.out.println("WordFrequencyMap keys size " + wordFrequencyMap.size());
     List<String> result = new ArrayList<>();
     while (!priorityQueue.isEmpty()) {
       result.add(priorityQueue.poll().getWord());
     }
+    Collections.reverse(result);
     return result;
   }
 
+  /**
+   * Iterate through each entry in the wordFrequencyMap and add it to the topK priority queue
+   */
   public void processWordFrequencies() {
     for (Map.Entry<String, Long> entry : wordFrequencyMap.entrySet()) {
       WordFrequency wordFrequency = new WordFrequency(entry.getKey(), entry.getValue());
@@ -59,6 +63,11 @@ public class TopKWords {
     }
   }
 
+  /**
+   * Compare current word's frequency with PriorityQueue's peek frequency if greater remove PriorityQueue min element
+   * and add the current word into the priority queue
+   * @param wordFrequency
+   */
   private void addToTopKPriorityQueue(WordFrequency wordFrequency) {
     if (priorityQueue.size() < k) {
       priorityQueue.add(wordFrequency);
@@ -69,8 +78,7 @@ public class TopKWords {
   }
 
   public static void main(String[] args) throws ExecutionException, InterruptedException {
-    String file = args[0];
-    TopKWords topk = new TopKWords(file, 10);
+    TopKWords topk = new TopKWords("C:\\dataset-400MB.txt", 10);
     System.out.println(topk.topK());
   }
 
