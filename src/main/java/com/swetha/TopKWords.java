@@ -21,11 +21,11 @@ public class TopKWords {
     this.k = k;
     this.priorityQueue = new PriorityQueue(k);
     this.wordFrequencyMap = new ConcurrentHashMap<>();
-    System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
-    ExecutorService executors = Executors.newFixedThreadPool(20);
+    // System.out.println("Num cores " + Runtime.getRuntime().availableProcessors());
+    ExecutorService executors = Executors.newFixedThreadPool(64);
     List<Callable<Long>> callables = new ArrayList<>();
-    List<FileSplit> splits = getSplits(file, new File(file).length(), toBytes(64));
-    System.out.println(splits);
+    List<FileSplit> splits = FileSplit.getSplits(file, new File(file).length(), new File(file).length() / 1024);
+    // System.out.println(splits);
     for(FileSplit split : splits) {
       Callable<Long> task = new ProcessFile(split, wordFrequencyMap);
       callables.add(task);
@@ -38,20 +38,8 @@ public class TopKWords {
       totalBytes += f.get();
     }
     System.out.println("Total bytes read " + totalBytes);
-    System.out.println("Total time taken " + (System.currentTimeMillis() - start) / 1000 + " secs");
+    System.out.println("Total time taken " + (System.currentTimeMillis() - start) + " ms");
     executors.shutdown();
-  }
-
-  private List<FileSplit> getSplits(String file, long fileLength, long splitSize) {
-    long start = 0;
-    List<FileSplit> splits = new ArrayList<>();
-    while(fileLength > 0) {
-      FileSplit split = new FileSplit(start, splitSize, file);
-      splits.add(split);
-      start += splitSize + 1;
-      fileLength -= splitSize;
-    }
-    return splits;
   }
 
   public List<WordFrequency> topK() {
